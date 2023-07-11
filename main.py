@@ -1,3 +1,10 @@
+"""
+Author: @dufan
+Description: Add banner.
+"""
+
+__version__ = "0.0.1"
+
 from PIL import Image, ImageFont, ImageDraw, ImageOps
 from PIL.ExifTags import TAGS, GPSTAGS, IFD
 from datetime import datetime
@@ -60,6 +67,7 @@ def get_fuji_filmmode(image_path):
             case 2560:
                 return 'Nostalgic Neg'
 
+
 def add_border_to_image(image_path, output_path, camera_logo=True, need_lens=True):
     # 读取图片
     image = Image.open(image_path)
@@ -69,8 +77,6 @@ def add_border_to_image(image_path, output_path, camera_logo=True, need_lens=Tru
     if exif_data is None:
         exif_data = {}
 
-    # 获取照片的拍摄日期
-    capture_date = datetime.strptime(exif_data.get('DateTimeOriginal'), '%Y:%m:%d %H:%M:%S').strftime('%Y-%m-%d %H:%M:%S %a')
 
     # 获取照片的拍摄机型、iso、快门速度、镜头参数和富士胶片模拟名称
     camera_make = exif_data.get('Make')
@@ -85,34 +91,39 @@ def add_border_to_image(image_path, output_path, camera_logo=True, need_lens=Tru
         shutter_speed = str(shutter_speed) if shutter_speed >= 1 else f"1/{int(1/shutter_speed)}"
 
     lens = exif_data.get('LensModel').replace('\x00', '')
+    # 获取照片的拍摄日期
+    capture_date = datetime.strptime(exif_data.get('DateTimeOriginal'), '%Y:%m:%d %H:%M:%S').strftime('%Y-%m-%d %H:%M:%S %a')
 
     film_mode = get_fuji_filmmode(image_path)
     focal_length = exif_data.get('FocalLengthIn35mmFilm')
     f_number = exif_data.get('FNumber')
 
-    # 创建一个新的图片，添加边框
-    border_left = 0.02
-    border_top = 0.008
+    # 尺寸
+    margin_left = int(0.02 * image.width)  # 左右边距
+    margin_top = int(0.01 * image.height)  # 上下边距
+    banner_height = int(0.08 * image.height)
+    main_sub_gap = int(image.height * 0.005)
+    anchor = (margin_left, image.height + margin_top) 
+    banner_start_y = image.height + margin_top
+
+    # 颜色
     border_color = (255, 255, 255)  # 设置边框颜色为白色
-
-    border_size = int(image.height * 0.05)  # banner的高度等于照片高度的5%
-    banner_start_y = image.height + int(image.height * border_top)
-    new_image = Image.new('RGB', (image.width, image.height + border_size), border_color)
-
-    # 将原始图片粘贴在新的图片上，使其位于边框内
-    new_image.paste(image, (0, 0))
-
     text_color = {
         "main": (0, 0, 0),  # 主字体是黑色
         "sub": (100, 100, 100)
     }
+
+    # 字体
     text_font = {
-        "main": ImageFont.truetype('SFCompactRounded.ttf', int(image.height * 0.02)),
-        "sub": ImageFont.truetype('SFCompactRounded.ttf', int(image.height * 0.015))
+        "main": ImageFont.truetype('Futura.ttc', int(image.height * 0.03)),
+        "sub": ImageFont.truetype('Futura.ttc', int(image.height * 0.02))
     }
-    # 在边框内添加照片的拍摄日期、拍摄机型、iso、快门速度、镜头参数和富士胶片模拟名称
-    # 边框高度 1% 留空白
-    text_position = (int(image.width * border_left), banner_start_y)  # 设置文本位置
+
+
+    new_image = Image.new('RGB', (image.width, image.height + banner_height), border_color)
+
+    # 将原始图片粘贴在新的图片上，使其位于边框内
+    new_image.paste(image, (0, 0))
 
     new_image_draw = ImageDraw.Draw(new_image)
 
@@ -123,42 +134,41 @@ def add_border_to_image(image_path, output_path, camera_logo=True, need_lens=Tru
         iso_text_size = new_image_draw.textbbox(xy=(0, 0), text=iso_aperture_text, font=text_font['main'], language='en')
         # print(iso_text_size) iso_text_size[2] 是宽度
         # 计算文本框的位置
-        iso_text_xy = (int(image.width * (1 - border_left)) - iso_text_size[2], text_position[1])
+        iso_text_xy = (image.width - margin_left - iso_text_size[2], anchor[1])
         new_image_draw.text(iso_text_xy, iso_aperture_text, fill=text_color['main'], font=text_font['main'])
-        new_image_draw.text((iso_text_xy[0] + 10, text_position[1] + iso_text_size[3] + 10), f"{capture_date}", fill=text_color['sub'], font=text_font['sub'])
-
+        new_image_draw.text((iso_text_xy[0] + 10, anchor[1] + iso_text_size[3] + 10), f"{capture_date}", fill=text_color['sub'], font=text_font['sub'])
+        capture_date_box = new_image_draw.textbbox(xy=(0, 0), text=f"{capture_date}", font=text_font['sub'], language='en')
 
     if camera_make is not None:
-        make_model_text = f"{camera_make} {camera_model}"
-        new_image_draw.text(text_position, make_model_text, fill=text_color['main'], font=text_font['main'], language='en')
+        make_model_text = f"{camera_model}"
+        new_image_draw.text(anchor, make_model_text, fill=text_color['main'], font=text_font['main'], language='en')
         make_model_xy = new_image_draw.textbbox(xy=(0, 0), text=make_model_text, font=text_font['main'], language='en')
-        lens_height = 0
+
         if need_lens:
             # lens 的 x 位置是左边框位置，y 的位置是根据 camera model 算出来的高度再加上10
-            lens_text_xy = (text_position[0], make_model_xy[3] + text_position[1] + 10)
+            lens_text_xy = (anchor[0], make_model_xy[3] + anchor[1] + main_sub_gap)
             new_image_draw.text(lens_text_xy, f"{lens}", fill=text_color['sub'], font=text_font['sub'], language='en')
-            lens_height = new_image_draw.textbbox(xy=(0, 0), text=f"{lens}", font=text_font['sub'], language='en')[3]
-        if camera_logo:
 
+        if camera_logo:
             camera_logo = Image.open(f"logos/{camera_make.lower()}.jpg")
             # 富士的logo尺寸是 5000*961
             logo_aspect_ratio = camera_logo.width / camera_logo.height
-            # 调整机型logo图片的大小，高度为 3% * 原始图片高度，跟iso参数右对齐
-            logo_new_height = (lens_height + make_model_xy[3]) // 2
+            # 调整机型logo图片的大小
+            logo_new_height = capture_date_box[3] + iso_text_size[3]
             logo_new_width = int(logo_new_height * logo_aspect_ratio)
             camera_logo = camera_logo.resize((logo_new_width, logo_new_height))
-            # 如何决定 logo 的位置：根据 model 文字的位置，在y轴上使图片处在中间
-            if iso_text_xy:  # 如果有iso信息
+            # 如何决定 logo 的位置：y轴 - iso 和拍摄时间文本中间值，x轴 - 计算位置
+            if iso_text_xy:
                 logo_x = iso_text_xy[0] - logo_new_width - 10
             else:
                 logo_x = int((image.width - camera_logo.width) / 2)
-            new_image.paste(camera_logo, (logo_x, (lens_height + make_model_xy[3]) // 2 + banner_start_y ))  # 将 logo 图片粘贴在边框内
+            new_image.paste(camera_logo, (logo_x, banner_start_y))  # 将 logo 图片粘贴在边框内
         
     # 保存新图片
     new_image.save(output_path, 'JPEG', quality=95)
 
 
 # 调用函数并传入需要处理的图片路径和新图片的保存路径
-for f in Path('tests').glob('*.jp*'):
+for f in Path('tests').glob('*.jpg'):
     add_border_to_image(f, f'output/{f.stem}.jpg', camera_logo=True, need_lens=True)
 

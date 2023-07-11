@@ -3,7 +3,7 @@ Author: @dufan
 Description: Add banner.
 """
 
-__version__ = "0.0.1"
+__version__ = "0.1.0"
 
 from PIL import Image, ImageFont, ImageDraw, ImageOps
 from PIL.ExifTags import TAGS, GPSTAGS, IFD

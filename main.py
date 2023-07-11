@@ -1,6 +1,9 @@
 from PIL import Image, ImageFont, ImageDraw, ImageOps
 from PIL.ExifTags import TAGS, GPSTAGS, IFD
-from datetime import date, datetime
+from datetime import datetime
+import os
+from pathlib import Path
+
 
 def get_exif_from_img(image_path):
     exif_result = {}
@@ -44,6 +47,10 @@ def add_border_to_image(image_path, output_path):
     camera_model = exif_data.get('Model')
     iso = exif_data.get('ISOSpeedRatings')
     shutter_speed = exif_data.get('ExposureTime')
+    if shutter_speed is not None:
+        shutter_speed = float(shutter_speed)
+        shutter_speed = str(shutter_speed) if shutter_speed >= 1 else f"1/{int(1/shutter_speed)}"
+
     lens = exif_data.get('LensModel')
     film_simulation = exif_data.get('FilmMode')
     focal_length = exif_data.get('FocalLengthIn35mmFilm')
@@ -75,8 +82,9 @@ def add_border_to_image(image_path, output_path):
 
     # 添加拍摄日期
     new_image_draw = ImageDraw.Draw(new_image)
-    new_image_draw.text(text_position, f"{camera_make} {camera_model}", fill=text_color['main'], font=text_font['main'])
-    new_image_draw.text((text_position[0], text_position[1] + int(image.height * 0.04)), f"{lens}", fill=text_color['sub'], font=text_font['sub'])
+    if camera_make is not None:
+        new_image_draw.text(text_position, f"{camera_make} {camera_model}", fill=text_color['main'], font=text_font['main'])
+        new_image_draw.text((text_position[0], text_position[1] + int(image.height * 0.04)), f"{lens}", fill=text_color['sub'], font=text_font['sub'])
     # lens 的 textsize 可能会比较长，需要先计算一下
     lens_text_size = new_image_draw.textbbox(xy=(text_position[0], text_position[1] + int(image.height * 0.04)), text=f"{lens}", font=text_font['sub'])
     # print(lens_text_size)  # 如果上一行的x=text_position[0]： (77, 5435, 2005, 5527)  如果上一行的x=0： (0, 5435, 1928, 5527)
@@ -94,24 +102,21 @@ def add_border_to_image(image_path, output_path):
     # camera_logo_resized = ImageOps.fit(camera_logo, (camera_logo_width, int(image.height * 0.03))) 
     new_image.paste(camera_logo, (int((image.width - camera_logo.width) / 2) , text_position[1] ))  # 将 logo 图片粘贴在边框内
 
-    iso_aperture_text = f"{focal_length}mm f/{f_number} {shutter_speed}s ISO{iso}"
-    iso_text_size = new_image_draw.textbbox(xy=(0, 0), text=iso_aperture_text, font=text_font['main'])
-    # print(iso_text_size) iso_text_size[2] 是宽度
-    # 计算文本框的位
-    iso_text_xy = (int(image.width * (1 - border_left)) - iso_text_size[2] ,  text_position[1])
-    new_image_draw.text(iso_text_xy, iso_aperture_text, fill=text_color['main'], font=text_font['main'])
-    new_image_draw.text((iso_text_xy[0], text_position[1] + int(image.height * 0.04)), f"{capture_date}", fill=text_color['sub'], font=text_font['sub'])
+    if focal_length is not None:
+        iso_aperture_text = f"{focal_length}mm f/{f_number} {shutter_speed}s ISO{iso}"
+        iso_text_size = new_image_draw.textbbox(xy=(0, 0), text=iso_aperture_text, font=text_font['main'])
+        # print(iso_text_size) iso_text_size[2] 是宽度
+        # 计算文本框的位
+        iso_text_xy = (int(image.width * (1 - border_left)) - iso_text_size[2] ,  text_position[1])
+        new_image_draw.text(iso_text_xy, iso_aperture_text, fill=text_color['main'], font=text_font['main'])
+        new_image_draw.text((iso_text_xy[0], text_position[1] + int(image.height * 0.04)), f"{capture_date}", fill=text_color['sub'], font=text_font['sub'])
 
 
-    # # 添加 iso、快门速度、镜头参数和富士胶片模拟名称
-    # new_image_draw.text((border_size, image.height + border_size + 80), f"ISO: {iso}", fill=text_color, font=text_font)
-    # new_image_draw.text((border_size, image.height + border_size + 100), f"Shutter Speed: {shutter_speed}", fill=text_color, font=text_font)
-    # new_image_draw.text((border_size, image.height + border_size + 120), f"Lens: {lens}", fill=text_color, font=text_font)
-    # new_image_draw.text((border_size, image.height + border_size + 140), f"Film Simulation: {film_simulation}", fill=text_color, font=text_font)
-
+  
     # 保存新图片
-    new_image.save(output_path)
+    new_image.save(output_path, 'JPEG', quality=95)
 
 # 调用函数并传入需要处理的图片路径和新图片的保存路径
-add_border_to_image('tests/test1.jpg', 'output/output1.jpg')
-add_border_to_image('tests/test2.jpeg', 'output/output2.jpg')
+for f in Path('tests').glob('*'):
+    add_border_to_image(f, f'output/{f.stem}.jpg')
+

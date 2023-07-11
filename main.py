@@ -98,7 +98,7 @@ def add_border_to_image(image_path, output_path, camera_logo=True, need_lens=Tru
     border_size = int(image.height * 0.08)  # banner的高度等于照片高度的8%
 
     new_image = Image.new('RGB', (image.width, image.height + border_size), border_color)
-    original_img_ratio = image.width / image.height
+
     # 将原始图片粘贴在新的图片上，使其位于边框内
     new_image.paste(image, (0, 0))
 

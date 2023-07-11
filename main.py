@@ -2,6 +2,7 @@ from PIL import Image, ImageFont, ImageDraw, ImageOps
 from PIL.ExifTags import TAGS, GPSTAGS, IFD
 from datetime import datetime
 from pathlib import Path
+import exifread
 
 def get_exif_from_img(image_path):
     exif_result = {}
@@ -26,6 +27,38 @@ def get_exif_from_img(image_path):
         except KeyError:
             pass
     return exif_result
+
+
+def get_fuji_filmmode(image_path):
+    # see https://exiftool.org/TagNames/FujiFilm.html
+    with open(image_path, 'rb') as f:
+        tags = exifread.process_file(f)
+    filmmode = tags.get('MakerNote Tag 0x1401')
+    if filmmode is None:
+        return None
+    else:
+        filmmode = int(f'{filmmode}')
+        match filmmode:
+            case 0:
+                return 'Standard (Provia)'
+            case 512:
+                return 'Velvia'
+            case 1024:
+                return 'Velvia'
+            case 1280:
+                return 'Pro Neg. Std'
+            case 1281:
+                return 'Pro Neg. Hi'
+            case 1536:
+                return 'Classic Chrome'
+            case 1792:
+                return 'Eterna'
+            case 2048:
+                return 'Classic Negative'
+            case 2304:
+                return 'Bleach Bypass'
+            case 2560:
+                return 'Nostalgic Neg'
 
 def add_border_to_image(image_path, output_path):
     # 读取图片
@@ -53,10 +86,11 @@ def add_border_to_image(image_path, output_path):
         shutter_speed = str(shutter_speed) if shutter_speed >= 1 else f"1/{int(1/shutter_speed)}"
 
     lens = exif_data.get('LensModel')
-    film_simulation = exif_data.get('FilmMode')
+    film_mode = get_fuji_filmmode(image_path)
+
     focal_length = exif_data.get('FocalLengthIn35mmFilm')
     f_number = exif_data.get('FNumber')
-    
+
 
     # 创建一个新的图片，添加边框
     border_left = 0.01
@@ -97,16 +131,17 @@ def add_border_to_image(image_path, output_path):
 
         camera_logo = Image.open(f"logos/{camera_make.lower()}.jpg")
         logo_aspect_ratio = camera_logo.width / camera_logo.height
-        # 调整机型logo图片的大小，高度为 6% * 原始图片高度，宽度为比例
-        logo_new_height = int(image.width * 0.035)
+        # 调整机型logo图片的大小，高度为 3% * 原始图片高度，宽度为比例
+        logo_new_height = int(image.width * 0.045)
         logo_new_width = int(logo_new_height * logo_aspect_ratio)
         camera_logo = camera_logo.resize((logo_new_width, logo_new_height))
-
         new_image.paste(camera_logo, (int((image.width - camera_logo.width) / 2) , text_position[1] ))  # 将 logo 图片粘贴在边框内
- 
-    
+        # 添加胶片模拟
+       
     if focal_length is not None:
         iso_aperture_text = f"{focal_length}mm f/{f_number} {shutter_speed}s ISO{iso}"
+        if film_mode is not None:
+            iso_aperture_text = f"{film_mode} {iso_aperture_text}"
         iso_text_size = new_image_draw.textbbox(xy=(0, 0), text=iso_aperture_text, font=text_font['main'])
         # print(iso_text_size) iso_text_size[2] 是宽度
         # 计算文本框的位置

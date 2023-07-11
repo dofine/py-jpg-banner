@@ -91,12 +91,12 @@ def add_border_to_image(image_path, output_path, camera_logo=True, need_lens=Tru
     f_number = exif_data.get('FNumber')
 
     # 创建一个新的图片，添加边框
-    border_left = 0.01
-    border_top = 0.01
+    border_left = 0.02
+    border_top = 0.008
     border_color = (255, 255, 255)  # 设置边框颜色为白色
 
-    border_size = int(image.height * 0.08)  # banner的高度等于照片高度的8%
-
+    border_size = int(image.height * 0.05)  # banner的高度等于照片高度的5%
+    banner_start_y = image.height + int(image.height * border_top)
     new_image = Image.new('RGB', (image.width, image.height + border_size), border_color)
 
     # 将原始图片粘贴在新的图片上，使其位于边框内
@@ -107,12 +107,12 @@ def add_border_to_image(image_path, output_path, camera_logo=True, need_lens=Tru
         "sub": (100, 100, 100)
     }
     text_font = {
-        "main": ImageFont.truetype('SFCompactRounded.ttf', int(image.height * 0.03)),
-        "sub": ImageFont.truetype('SFCompactRounded.ttf', int(image.height * 0.02))
+        "main": ImageFont.truetype('SFCompactRounded.ttf', int(image.height * 0.02)),
+        "sub": ImageFont.truetype('SFCompactRounded.ttf', int(image.height * 0.015))
     }
     # 在边框内添加照片的拍摄日期、拍摄机型、iso、快门速度、镜头参数和富士胶片模拟名称
-    
-    text_position = (int(image.width * border_left), image.height + int(image.height * border_top))  # 设置文本位置
+    # 边框高度 1% 留空白
+    text_position = (int(image.width * border_left), banner_start_y)  # 设置文本位置
 
     new_image_draw = ImageDraw.Draw(new_image)
 
@@ -125,33 +125,34 @@ def add_border_to_image(image_path, output_path, camera_logo=True, need_lens=Tru
         # 计算文本框的位置
         iso_text_xy = (int(image.width * (1 - border_left)) - iso_text_size[2], text_position[1])
         new_image_draw.text(iso_text_xy, iso_aperture_text, fill=text_color['main'], font=text_font['main'])
-        new_image_draw.text((iso_text_xy[0], text_position[1] + iso_text_size[3] + 10), f"{capture_date}", fill=text_color['sub'], font=text_font['sub'])
+        new_image_draw.text((iso_text_xy[0] + 10, text_position[1] + iso_text_size[3] + 10), f"{capture_date}", fill=text_color['sub'], font=text_font['sub'])
 
 
     if camera_make is not None:
         make_model_text = f"{camera_make} {camera_model}"
         new_image_draw.text(text_position, make_model_text, fill=text_color['main'], font=text_font['main'], language='en')
         make_model_xy = new_image_draw.textbbox(xy=(0, 0), text=make_model_text, font=text_font['main'], language='en')
+        lens_height = 0
         if need_lens:
-            # lens 的 x 位置是左边框位置，y 的位置是根据 camera model 算出来的高度再加上一小段像素举例
-
-            lens_text_xy = (text_position[0], make_model_xy[3] + 10 + text_position[1])
-
-            new_image_draw.text(lens_text_xy, "{}".format(lens), fill=text_color['sub'], font=text_font['sub'])
+            # lens 的 x 位置是左边框位置，y 的位置是根据 camera model 算出来的高度再加上10
+            lens_text_xy = (text_position[0], make_model_xy[3] + text_position[1] + 10)
+            new_image_draw.text(lens_text_xy, f"{lens}", fill=text_color['sub'], font=text_font['sub'], language='en')
+            lens_height = new_image_draw.textbbox(xy=(0, 0), text=f"{lens}", font=text_font['sub'], language='en')[3]
         if camera_logo:
-        # lens_text_size = new_image_draw.textbbox(xy=(text_position[0], text_position[1] + int(image.height * 0.04)), text=f"{lens}", font=text_font['sub'])
+
             camera_logo = Image.open(f"logos/{camera_make.lower()}.jpg")
             # 富士的logo尺寸是 5000*961
             logo_aspect_ratio = camera_logo.width / camera_logo.height
             # 调整机型logo图片的大小，高度为 3% * 原始图片高度，跟iso参数右对齐
-            logo_new_height = int(image.width * 0.045)
+            logo_new_height = (lens_height + make_model_xy[3]) // 2
             logo_new_width = int(logo_new_height * logo_aspect_ratio)
             camera_logo = camera_logo.resize((logo_new_width, logo_new_height))
+            # 如何决定 logo 的位置：根据 model 文字的位置，在y轴上使图片处在中间
             if iso_text_xy:  # 如果有iso信息
                 logo_x = iso_text_xy[0] - logo_new_width - 10
             else:
                 logo_x = int((image.width - camera_logo.width) / 2)
-            new_image.paste(camera_logo, (logo_x , text_position[1] ))  # 将 logo 图片粘贴在边框内
+            new_image.paste(camera_logo, (logo_x, (lens_height + make_model_xy[3]) // 2 + banner_start_y ))  # 将 logo 图片粘贴在边框内
         
     # 保存新图片
     new_image.save(output_path, 'JPEG', quality=95)

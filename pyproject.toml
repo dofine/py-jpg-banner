@@ -1,4 +1,10 @@
 [tool.semantic_release]
-version_variable = "main.py:__version__"
+version_variable = [
+  "main.py:__version__",
+  ""pyproject.toml:version"
+]
 major_on_zero = false
 branch = "main"
+
+[tool.poetry]
+version = "0.1.0"

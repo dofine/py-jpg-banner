@@ -1,3 +1,7 @@
+## Status
+New repo location is: https://github.com/dofine/imagebanner
+
+
 ## Description
 Since Xiaomi launched [Xiaomi 12s ultra](https://www.mi.com/global/product/xiaomi-12s-ultra/), it has been popular to add watermark to the photo, showing camera model, logo, iso and other parameters. Many third party apps, such as [Liit](https://apps.apple.com/us/app/liit-photo-editor/id1547215938) also provide this functionaliy. 
 

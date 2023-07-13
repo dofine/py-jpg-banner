@@ -1,5 +1,7 @@
 ## Description
+Since Xiaomi launched [Xiaomi 12s ultra](https://www.mi.com/global/product/xiaomi-12s-ultra/), it has been popular to add watermark to the photo, showing camera model, logo, iso and other parameters. Many third party apps, such as [Liit](https://apps.apple.com/us/app/liit-photo-editor/id1547215938) also provide this functionaliy. 
 
+This repo is aimed at fuji cameras, with film simulation info on the wartermark.
 
 ## Requirements
 - Python 3.10

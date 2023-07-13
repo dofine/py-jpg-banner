@@ -1,5 +1,5 @@
 ## Status
-New repo location is: https://github.com/dofine/imagebanner
+New repo location is [dofine/imagebanner](https://github.com/dofine/imagebanner). It has better docs, code styles and more tests covered.
 
 
 ## Description

@@ -112,17 +112,14 @@ def add_border_to_image(image_path, output_path, camera_logo=True, need_lens=Tru
         "main": (0, 0, 0),  # 主字体是黑色
         "sub": (100, 100, 100)
     }
-
+    FONT_NAME = 'Futura.ttc'
     # 字体
     text_font = {
-        "main": ImageFont.truetype('Futura.ttc', int(image.height * 0.03)),
-        "sub": ImageFont.truetype('Futura.ttc', int(image.height * 0.02))
+        "main": ImageFont.truetype(FONT_NAME, int(image.height * 0.03)),
+        "sub": ImageFont.truetype(FONT_NAME, int(image.height * 0.02))
     }
 
-
     new_image = Image.new('RGB', (image.width, image.height + banner_height), border_color)
-
-    # 将原始图片粘贴在新的图片上，使其位于边框内
     new_image.paste(image, (0, 0))
 
     new_image_draw = ImageDraw.Draw(new_image)
